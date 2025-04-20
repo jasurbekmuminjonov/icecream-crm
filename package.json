@@ -1,0 +1,24 @@
+{
+  "name": "ice-cream-crm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm start --prefix client\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasurbekmuminjonov/ice-cream-crm.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jasurbekmuminjonov/ice-cream-crm/issues"
+  },
+  "homepage": "https://github.com/jasurbekmuminjonov/ice-cream-crm#readme",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
