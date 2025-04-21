@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useGetProductsQuery } from '../context/service/products.service';
-import { Button, Card, Col, Input, message, Row, Space, Table, Typography, Form, Select } from 'antd'
-import { useGetProductTypesQuery } from '../context/service/productType.service';
+import { Button, Card, Col, Input, message, Row, Space, Table, Typography, Form, Select, Modal } from 'antd'
 import moment from 'moment';
 import { FaPlus } from 'react-icons/fa';
 import { FaX } from 'react-icons/fa6';
@@ -10,7 +9,10 @@ import { useCreateSaleMutation } from '../context/service/sale.service';
 const { Title, Text } = Typography;
 const Sale = () => {
     const { data: products = [], isLoading, refetch } = useGetProductsQuery();
-    const { data: users = [] } = useGetUsersQuery()
+    const { data: users = [], refetch: userRefetch } = useGetUsersQuery()
+    const [userType, setUserType] = useState("")
+    const [userCreateModal, setUserCreateModal] = useState(false)
+    const [userCreateForm] = Form.useForm()
     const [form] = Form.useForm();
     const [filteredProducts, setFilteredProducts] = useState(products)
     const [createSale] = useCreateSaleMutation()
@@ -57,8 +59,72 @@ const Sale = () => {
         }
 
     }
+
+    async function handleUserCreate(values) {
+        try {
+            await createUser({ ...values, role: userType }).unwrap()
+            message.success("Foydalanuvchi muvaffaqiyatli yaratildi")
+            setUserCreateModal(false)
+            userCreateForm.resetFields()
+            userRefetch()
+        } catch (error) {
+            message.error("Xatolik yuz berdi")
+            console.log(error);
+        }
+    }
     return (
         <div className='sale' style={{ display: "flex", height: "100%" }}>
+            <Modal open={userCreateModal} title={userType === "client" ? "Yangi xaridor qo'shish" : "Yangi agent qo'shish"} footer={[]} onCancel={() => {
+                setUserType("");
+                setUserCreateModal(false);
+                userCreateForm.resetFields()
+            }}>
+                <Form form={userCreateForm} onFinish={handleUserCreate} layout='vertical'>
+                    <Space direction='vertical' style={{ width: "100%" }}>
+                        <Form.Item
+                            label="To'liq ism"
+                            name={"fullname"}
+                            rules={[
+                                { required: true, message: "To'liq ismni kiritish shart" }
+                            ]}
+                        >
+                            <Input placeholder='Ali Valiyev' />
+                        </Form.Item>
+                        <Form.Item
+                            label="Telefon"
+                            name={"phone"}
+                            rules={[
+                                { required: true, message: "Telefon kiritish shart" },
+                                {
+                                    pattern: /^\+998[0-9]{9}$/,
+                                    message:
+                                        "Telefon raqami +998 bilan boshlanib, 9 ta raqam bo'lishi kerak",
+                                },
+                            ]}
+                        >
+                            <Input placeholder="+998901234567" />
+                        </Form.Item>
+                        {
+                            userType === "distributor" && (
+                                <Form.Item
+                                    label="Parol"
+                                    name={"password"}
+                                    rules={[
+                                        { required: true, message: "Parolni kiritish shart" },
+                                        { minLength: 4, message: "Parol kamida 6 ta belgidan iborat bo'lishi kerak" }
+                                    ]}
+                                >
+                                    <Input type='password' placeholder='****' />
+                                </Form.Item>
+                            )
+                        }
+                        <Form.Item>
+                            <Button type='primary' htmlType='submit'>Saqlash</Button>
+                        </Form.Item>
+                    </Space>
+
+                </Form>
+            </Modal>
             <div style={{ width: "60%", borderRight: "1px solid #ccc", padding: "0 5px" }}>
                 <Input
                     onChange={(e) => {
@@ -119,31 +185,48 @@ const Sale = () => {
                     )}
                 </Space>
                 <Form onFinish={handleSubmit} style={{ height: "35%", padding: "5px 0", borderTop: "1px solid #ccc" }} form={form} layout='vertical'>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item label="Xaridor" name="clientId" rules={[{ required: true, message: "Xaridorni tanlang" }]}>
-                                <Select
-                                    placeholder='Xaridorni tanlang'
-                                    options={users.filter(user => user.role === "client").map(user => ({ label: user.fullname, value: user._id }))}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Agent" name="distributorId" rules={[{ required: true, message: "Agentni tanlang" }]}>
-                                <Select
-                                    placeholder='Agentni tanlang'
-                                    options={users.filter(user => user.role === "distributor").map(user => ({ label: user.fullname, value: user._id }))}
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item>
-                                <Button htmlType='submit' type='primary'>Sotish</Button>
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Space direction='vertical' style={{ width: "100%" }}>
+
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <Form.Item label="Xaridor" name="clientId" rules={[{ required: true, message: "Xaridorni tanlang" }]}>
+                                    <Select
+                                        placeholder='Xaridorni tanlang'
+                                        options={users.filter(user => user.role === "client").map(user => ({ label: user.fullname, value: user._id }))}
+                                    />
+                                </Form.Item>
+                                <Button variant='dashed' onClick={() => {
+                                    setUserType("client")
+                                    setUserCreateModal(true)
+                                    userCreateForm.resetFields()
+                                }}>
+                                    Xaridor qo'shish
+                                </Button>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item label="Agent" name="distributorId" rules={[{ required: true, message: "Agentni tanlang" }]}>
+                                    <Select
+                                        placeholder='Agentni tanlang'
+                                        options={users.filter(user => user.role === "distributor").map(user => ({ label: user.fullname, value: user._id }))}
+                                    />
+                                </Form.Item>
+                                <Button variant='dashed' onClick={() => {
+                                    setUserType("distributor")
+                                    setUserCreateModal(true)
+                                    userCreateForm.resetFields()
+                                }}>
+                                    Agent qo'shish
+                                </Button>
+                            </Col>
+                        </Row>
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <Form.Item>
+                                    <Button htmlType='submit' type='primary'>Sotish</Button>
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </Space>
                 </Form>
             </div>
         </div>

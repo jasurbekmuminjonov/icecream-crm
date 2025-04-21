@@ -96,8 +96,8 @@ const Products = () => {
                 message.success("Mahsulot muvaffaqiyatli qo'shildi");
             }
             setSelectedItem("");
-            // form.resetFields();
-            // setCurrentTab("1");
+            form.resetFields();
+            setCurrentTab("1");
         } catch (error) {
             message.error("Mahsulotni qo'shishda xatolik: " + error.data.message);
         }
