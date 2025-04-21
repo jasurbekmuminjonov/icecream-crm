@@ -170,7 +170,9 @@ const SaleHistory = () => {
                     <tr>
                         <th>Mahsulot</th>
                         <th>Narxi</th>
-                        <th>Soni</th>
+                        <th>Qadoqlash turi</th>
+                        <th>Dona soni</th>
+                        <th>Quti soni</th>
                         <th>Jami</th>
                     </tr>
                 </thead>
@@ -181,7 +183,9 @@ const SaleHistory = () => {
                             <tr>
                                 <td>${product.productName}</td>
                                 <td>${product.sellingPrice.toLocaleString()} so'm</td>
+                                <td>${packageTypes[product.productId.productTypeId.packageType]}</td>
                                 <td>${product.quantity}</td>
+                                <td>${product.productId.productTypeId.packageType === "box" ? product.quantity / product.productId.productTypeId.pieceQuantityPerBox : "-"}</td>
                                 <td>${total.toLocaleString()} so'm</td>
                             </tr>
                         `;
@@ -193,7 +197,7 @@ const SaleHistory = () => {
                 <div><strong>Jami to'lov:</strong> ${record.totalAmountToPaid.toLocaleString()} so'm</div>
                 <div><strong>To'langan:</strong> ${record.totalAmountPaid.toLocaleString()} so'm</div>
                 <div><strong>Qoldiq:</strong> ${(record.totalAmountToPaid - record.totalAmountPaid).toLocaleString()} so'm</div>
-                <div><strong>Yaratilgan sana:</strong> ${moment(record.createdAt).format("DD.MM.YYYY")}</div>
+                <div><strong>Sotilgan sana:</strong> ${moment(record.createdAt).format("DD.MM.YYYY")}</div>
             </div>
     
             <script>

@@ -32,7 +32,6 @@ exports.getProducts = async (req, res) => {
 exports.updateProduct = async (req, res) => {
     try {
         const { productId } = req.params;
-        console.log(productId);
         const { adminId } = req.user;
 
         const product = await Product.findOne({ _id: productId, adminId });

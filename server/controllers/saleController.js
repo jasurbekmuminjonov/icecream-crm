@@ -17,7 +17,6 @@ exports.createSale = async (req, res) => {
 
             const netProfit = (item.sellingPrice - product.unitPurchasePrice) * item.quantity;
             totalAmountToPaid += item.sellingPrice * item.quantity;
-            console.log(item.quantity);
 
             product.totalPieceQuantity -= item.quantity;
             await product.save();
@@ -31,7 +30,7 @@ exports.createSale = async (req, res) => {
             });
         }
 
-        await Sale.create({
+        const newSale = await Sale.create({
             clientId,
             distributorId,
             adminId,
@@ -39,13 +38,29 @@ exports.createSale = async (req, res) => {
             totalAmountToPaid
         });
 
-        return res.status(201).json({ message: "Sotuv muvaffaqiyatli yaratildi" });
+        const populatedSale = await Sale.findById(newSale._id)
+            .populate('clientId', 'fullname phone')
+            .populate('distributorId', 'fullname phone')
+            .populate('products.productId')
+            .populate({
+                path: 'products.productId',
+                populate: {
+                    path: 'productTypeId',
+                    select: 'name packageType pieceQuantityPerBox',
+                }
+            });
+
+        return res.status(201).json({
+            message: "Sotuv muvaffaqiyatli yaratildi",
+            record: populatedSale
+        });
 
     } catch (err) {
         console.log(err.message);
         return res.status(500).json({ message: "Serverda xatolik" });
     }
 };
+
 
 exports.getSales = async (req, res) => {
     try {

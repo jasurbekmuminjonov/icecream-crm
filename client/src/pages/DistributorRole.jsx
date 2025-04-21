@@ -14,7 +14,6 @@ const DistributorRole = () => {
     const userId = localStorage.getItem('userId');
     const [selectedItem, setSelectedItem] = useState("");
     const userSales = sales.filter(sale => sale.distributorId._id === userId);
-    console.log(userSales);
     const statusTypes = {
         inprogress: "Jarayonda",
         delivered: "Yetkazilgan"

@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useGetProductsQuery } from '../context/service/products.service';
 import { Button, Card, Col, Input, message, Row, Space, Table, Typography, Form, Select, Modal } from 'antd'
 import moment from 'moment';
-import { FaPlus } from 'react-icons/fa';
+import { FaAsterisk, FaPlus } from 'react-icons/fa';
 import { FaX } from 'react-icons/fa6';
 import { useCreateUserMutation, useGetUsersQuery } from '../context/service/user.service';
 import { useCreateSaleMutation } from '../context/service/sale.service';
+import { useGetProductTypesQuery } from '../context/service/productType.service';
 const { Title, Text } = Typography;
 const Sale = () => {
     const { data: products = [], isLoading, refetch } = useGetProductsQuery();
@@ -15,6 +16,7 @@ const Sale = () => {
     const [userCreateForm] = Form.useForm()
     const [form] = Form.useForm();
     const [filteredProducts, setFilteredProducts] = useState(products)
+    const { data: productTypeData = [] } = useGetProductTypesQuery()
     const [createSale] = useCreateSaleMutation()
     const [createUser] = useCreateUserMutation()
     const [basket, setBasket] = useState([])
@@ -31,7 +33,7 @@ const Sale = () => {
         { title: "Qadoq turi", dataIndex: "productTypeId", render: (text) => packageTypes[text.packageType] },
         { title: "Jami dona soni", dataIndex: "totalPieceQuantity" },
         { title: "Qutidagi dona soni", dataIndex: "productTypeId", render: (text) => text.packageType === "piece" ? "-" : text.pieceQuantityPerBox },
-        { title: "Jami quti soni", dataIndex: "productTypeId", render: (text, record) => text.packageType === "piece" ? "-" : (record.totalPieceQuantity / text.pieceQuantityPerBox).toFixed(2) },
+        { title: "Jami quti soni", dataIndex: "productTypeId", render: (text, record) => text.packageType === "piece" ? "-" : (record.totalPieceQuantity / text.pieceQuantityPerBox).toFixed() },
         { title: "Sotish narxi", dataIndex: "unitSellingPrice" },
         { title: "Kiritilgan sana", dataIndex: "createdAt", render: (text) => moment(text).format("DD.MM.YYYY") },
         { title: "Tanlash", render: (_, record) => (<Button type='primary' onClick={() => basket.find(item => item._id === record._id) ? message.error("Mahsulot allaqachon tanlangan") : setBasket([...basket, record])}><FaPlus /></Button>) },
@@ -48,16 +50,122 @@ const Sale = () => {
                     quantity: item.totalPieceQuantity
                 }))
             }
-            await createSale(data).unwrap()
+            const res = await createSale(data).unwrap()
             message.success("Sotuv muvaffaqiyatli amalga oshirildi")
             setBasket([])
             form.resetFields()
             refetch()
+            setFilteredProducts(products)
+            generateInvoice(res.record)
         } catch (error) {
             message.error("Xatolik yuz berdi")
             console.log(error);
         }
 
+    }
+
+    function generateInvoice(record) {
+        const invoiceWindow = window.open('', '_blank');
+        const invoiceHTML = `
+            <html>
+            <head>
+                <title>Hisob-faktura</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 40px;
+                        width: 210mm;
+                        height: 297mm;
+                        box-sizing: border-box;
+                    }
+                    h1 {
+                        text-align: center;
+                    }
+                    .info {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-top: 20px;
+                        font-size: 14px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 30px;
+                    }
+                    th, td {
+                        border: 1px solid #333;
+                        padding: 8px;
+                        text-align: left;
+                        font-size: 14px;
+                    }
+                    .totals {
+                        margin-top: 20px;
+                        font-size: 14px;
+                    }
+                    .totals div {
+                        margin-bottom: 5px;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Hisob-faktura</h1>
+                <div class="info">
+                    <div>
+                        <strong>Xaridor:</strong> ${record.clientId.fullname}<br>
+                        <strong>Telefon:</strong> ${record.clientId.phone}
+                    </div>
+                    <div>
+                        <strong>Agent:</strong> ${record.distributorId.fullname}<br>
+                        <strong>Telefon:</strong> ${record.distributorId.phone}
+                    </div>
+                </div>
+        
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Mahsulot</th>
+                            <th>Narxi</th>
+                            <th>Qadoqlash turi</th>
+                            <th>Dona soni</th>
+                            <th>Quti soni</th>
+                            <th>Jami</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${record.products.map(product => {
+            const total = product.sellingPrice * product.quantity;
+            return `
+                                <tr>
+                                    <td>${product.productName}</td>
+                                    <td>${product.sellingPrice.toLocaleString()} so'm</td>
+                                    <td>${packageTypes[product.productId.productTypeId.packageType]}</td>
+                                    <td>${product.quantity}</td>
+                                    <td>${product.productId.productTypeId.packageType === "box" ? product.quantity / product.productId.productTypeId.pieceQuantityPerBox : "-"}</td>
+                                    <td>${total.toLocaleString()} so'm</td>
+                                </tr>
+                            `;
+        }).join('')}
+                    </tbody>
+                </table>
+        
+                <div class="totals">
+                    <div><strong>Jami to'lov:</strong> ${record.totalAmountToPaid.toLocaleString()} so'm</div>
+                    <div><strong>To'langan:</strong> ${record.totalAmountPaid.toLocaleString()} so'm</div>
+                    <div><strong>Qoldiq:</strong> ${(record.totalAmountToPaid - record.totalAmountPaid).toLocaleString()} so'm</div>
+                    <div><strong>Sotilgan sana:</strong> ${moment(record.createdAt).format("DD.MM.YYYY")}</div>
+                </div>
+        
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+            </html>`;
+
+        invoiceWindow.document.open();
+        invoiceWindow.document.write(invoiceHTML);
+        invoiceWindow.document.close();
     }
 
     async function handleUserCreate(values) {
@@ -72,6 +180,7 @@ const Sale = () => {
             console.log(error);
         }
     }
+
     return (
         <div className='sale' style={{ display: "flex", height: "100%" }}>
             <Modal open={userCreateModal} title={userType === "client" ? "Yangi xaridor qo'shish" : "Yangi agent qo'shish"} footer={[]} onCancel={() => {
@@ -161,13 +270,14 @@ const Sale = () => {
                                 </Col>
                                 <Col span={7}>
                                     <p>Sotilayotgan soni</p>
+                                    <p><FaAsterisk size={8} color='orange' />{item.productTypeId.packageType === 'box' ? "Quti soni" : "Dona soni"}</p>
                                     <Input
                                         type="number"
-                                        value={item.totalPieceQuantity}
-                                        max={item.totalPieceQuantity}
+                                        value={item.productTypeId.packageType === 'box' ? item.totalPieceQuantity / item.productTypeId.pieceQuantityPerBox : item.totalPieceQuantity}
+                                        max={item.productTypeId.packageType === 'box' ? item.totalPieceQuantity / item.productTypeId.pieceQuantityPerBox : item.totalPieceQuantity}
                                         min={1}
                                         onChange={(e) => {
-                                            const newBasket = basket.map(b => b._id === item._id ? { ...b, totalPieceQuantity: Number(e.target.value) } : b)
+                                            const newBasket = basket.map(b => b._id === item._id ? { ...b, totalPieceQuantity: item.productTypeId.packageType === 'box' ? Number(e.target.value * item.productTypeId.pieceQuantityPerBox) : Number(e.target.value) } : b)
                                             setBasket(newBasket)
                                         }}
                                     />

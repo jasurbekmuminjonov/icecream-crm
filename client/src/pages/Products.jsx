@@ -34,7 +34,7 @@ const Products = () => {
         { title: "Qadoq turi", dataIndex: "productTypeId", render: (text) => packageTypes[text.packageType] },
         { title: "Jami dona soni", dataIndex: "totalPieceQuantity" },
         { title: "Qutidagi dona soni", dataIndex: "productTypeId", render: (text) => text.packageType === "piece" ? "-" : text.pieceQuantityPerBox },
-        { title: "Jami quti soni", dataIndex: "productTypeId", render: (text, record) => text.packageType === "piece" ? "-" : (record.totalPieceQuantity / text.pieceQuantityPerBox).toFixed(2) },
+        { title: "Jami quti soni", dataIndex: "productTypeId", render: (text, record) => text.packageType === "piece" ? "-" : (record.totalPieceQuantity / text.pieceQuantityPerBox).toFixed() },
         { title: "Sotib olish narxi", dataIndex: "unitPurchasePrice" },
         { title: "Sotish narxi", dataIndex: "unitSellingPrice" },
         { title: "Kiritilgan sana", dataIndex: "createdAt", render: (text) => moment(text).format("DD.MM.YYYY") },
@@ -46,7 +46,7 @@ const Products = () => {
                             setSelectedItem(record._id);
                             form.setFieldsValue({
                                 productTypeId: record.productTypeId._id,
-                                totalPieceQuantity: record.productTypeId.packageType === "box" ? (record.totalPieceQuantity / record.productTypeId.pieceQuantityPerBox).toFixed(2) : record.totalPieceQuantity,
+                                totalPieceQuantity: record.productTypeId.packageType === "box" ? (record.totalPieceQuantity / record.productTypeId.pieceQuantityPerBox).toFixed() : record.totalPieceQuantity,
                                 unitPurchasePrice: record.unitPurchasePrice,
                                 unitSellingPrice: record.unitSellingPrice,
                             });
