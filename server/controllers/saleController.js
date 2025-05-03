@@ -1,203 +1,146 @@
-// controllers/saleController.js
-const Product = require("../models/productModel");
-const Sale = require("../models/saleModel");
+const Product = require('../models/productModel');
+const Sale = require('../models/saleModel');
 
 exports.createSale = async (req, res) => {
-  try {
-    const { products, clientId, distributorId } = req.body;
-    const { adminId } = req.user;
+    try {
+        const { products, clientId, distributorId } = req.body;
+        const { adminId } = req.user;
 
-    let totalAmountToPaid = 0;
-    const updatedProducts = [];
+        let totalAmountToPaid = 0;
+        const updatedProducts = [];
 
-    for (const item of products) {
-      const product = await Product.findById(item.productId).populate(
-        "productTypeId"
-      );
-      if (!product) {
-        return res
-          .status(404)
-          .json({ message: `Mahsulot topilmadi: ${item.productId}` });
-      }
+        for (const item of products) {
+            const product = await Product.findById(item.productId).populate('productTypeId');
+            if (!product) {
+                return res.status(404).json({ message: `Mahsulot topilmadi: ${item.productId}` });
+            }
 
-      const netProfit =
-        (item.sellingPrice - product.unitPurchasePrice) * item.quantity;
-      totalAmountToPaid += item.sellingPrice * item.quantity;
+            const netProfit = (item.sellingPrice - product.unitPurchasePrice) * item.quantity;
+            totalAmountToPaid += item.sellingPrice * item.quantity;
 
-      product.totalPieceQuantity -= item.quantity;
-      await product.save();
+            product.totalPieceQuantity -= item.quantity;
+            await product.save();
 
-      updatedProducts.push({
-        productId: item.productId,
-        sellingPrice: item.sellingPrice,
-        quantity: item.quantity,
-        netProfit: netProfit,
-        productName: product.productTypeId.name,
-      });
+            updatedProducts.push({
+                productId: item.productId,
+                sellingPrice: item.sellingPrice,
+                quantity: item.quantity,
+                netProfit: netProfit,
+                productName: product.productTypeId.name,
+            });
+        }
+
+        const newSale = await Sale.create({
+            clientId,
+            distributorId,
+            adminId,
+            products: updatedProducts,
+            totalAmountToPaid
+        });
+
+        const populatedSale = await Sale.findById(newSale._id)
+            .populate('clientId', 'fullname phone')
+            .populate('distributorId', 'fullname phone')
+            .populate('products.productId')
+            .populate({
+                path: 'products.productId',
+                populate: {
+                    path: 'productTypeId',
+                    select: 'name packageType pieceQuantityPerBox',
+                }
+            });
+
+        return res.status(201).json({
+            message: "Sotuv muvaffaqiyatli yaratildi",
+            record: populatedSale
+        });
+
+    } catch (err) {
+        console.log(err.message);
+        return res.status(500).json({ message: "Serverda xatolik" });
     }
-
-    const newSale = await Sale.create({
-      clientId,
-      distributorId,
-      adminId,
-      status: "pending",
-      products: updatedProducts,
-      totalAmountToPaid,
-      totalAmountPaid: 0,
-      isDebt: true,
-      paymentLog: [],
-    });
-
-    const populatedSale = await Sale.findById(newSale._id)
-      .populate("clientId", "fullname phone")
-      .populate("distributorId", "fullname phone")
-      .populate("products.productId")
-      .populate({
-        path: "products.productId",
-        populate: {
-          path: "productTypeId",
-          select: "name packageType pieceQuantityPerBox",
-        },
-      });
-
-    return res.status(201).json({
-      message: "Sotuv muvaffaqiyatli yaratildi",
-      record: populatedSale,
-    });
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).json({ message: "Serverda xatolik" });
-  }
 };
+
 
 exports.getSales = async (req, res) => {
-  try {
-    const { adminId } = req.user;
-    const sales = await Sale.find({ adminId })
-      .populate("clientId", "fullname phone")
-      .populate("distributorId", "fullname phone")
-      .populate("products.productId")
-      .populate({
-        path: "products.productId",
-        populate: {
-          path: "productTypeId",
-          select: "name packageType pieceQuantityPerBox",
-        },
-      });
+    try {
+        const { adminId } = req.user;
+        const sales = await Sale.find({ adminId })
+            .populate('clientId', 'fullname phone')
+            .populate('distributorId', 'fullname phone')
+            .populate('products.productId')
+            .populate({
+                path: 'products.productId',
+                populate: {
+                    path: 'productTypeId',
+                    select: 'name packageType pieceQuantityPerBox',
+                }
+            });
 
-    return res.json(sales);
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).json({ message: "Serverda xatolik" });
-  }
+        return res.json(sales);
+    } catch (err) {
+        console.log(err.message);
+        return res.status(500).json({ message: "Serverda xatolik" });
+    }
 };
 
+
 exports.createPayment = async (req, res) => {
-  try {
-    const { saleId } = req.params;
-    const { paymentAmount } = req.body;
+    try {
+        const { saleId } = req.params;
+        const { paymentAmount } = req.body;
 
-    const sale = await Sale.findById(saleId);
-    if (!sale) {
-      return res.status(404).json({ message: "Sotuv topilmadi" });
+        const sale = await Sale.findById(saleId);
+        if (!sale) {
+            return res.status(404).json({ message: "Sotuv topilmadi" });
+        }
+
+        sale.paymentLog.push({
+            paymentAmount
+        });
+
+        sale.totalAmountPaid += paymentAmount;
+
+        if (sale.totalAmountPaid >= sale.totalAmountToPaid) {
+            sale.isDebt = false;
+        }
+
+        await sale.save();
+
+        return res.status(200).json({ message: "To'lov muvaffaqiyatli qo'shildi" });
+
+    } catch (err) {
+        console.log(err.message);
+        return res.status(500).json({ message: "Serverda xatolik" });
     }
-
-    sale.paymentLog.push({ paymentAmount });
-    sale.totalAmountPaid += paymentAmount;
-
-    if (sale.totalAmountPaid >= sale.totalAmountToPaid) {
-      sale.isDebt = false;
-    }
-
-    await sale.save();
-    return res.status(200).json({ message: "To'lov muvaffaqiyatli qo'shildi" });
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).json({ message: "Serverda xatolik" });
-  }
 };
 
 exports.deliverSale = async (req, res) => {
-  try {
-    const { saleId } = req.params;
-    const { paymentAmount } = req.body;
+    try {
+        const { saleId } = req.params
+        const { paymentAmount } = req.body;
+        const sale = await Sale.findById(saleId);
+        if (!sale) {
+            return res.status(404).json({ message: "Sotuv topilmadi" });
+        }
 
-    const sale = await Sale.findById(saleId)
-      .populate({
-        path: "products.productId",
-        populate: {
-          path: "productTypeId",
-          select: "name packageType pieceQuantityPerBox",
-        },
-      })
-      .populate("clientId distributorId");
+        sale.paymentLog.push({
+            paymentAmount
+        });
 
-    if (!sale) {
-      return res.status(404).json({ message: "Sotuv topilmadi" });
+        sale.totalAmountPaid += paymentAmount;
+        sale.status = 'delivered'
+
+        if (sale.totalAmountPaid >= sale.totalAmountToPaid) {
+            sale.isDebt = false;
+        }
+
+        await sale.save();
+        return res.status(200).json({ message: "Mahsulot muvaffaqiyatli yetkazib berildi" });
+
+
+    } catch (err) {
+        console.log(err.message)
+        return res.status(500).json({ message: "Serverda xatolik" });
     }
-
-    // ❌ Avvalgi tekshiruvni olib tashlang: if (sale.status !== 'inprogress')
-    // ✅ Quyidagicha yangilab tasdiqlang:
-    if (sale.status === "delivered") {
-      return res.status(400).json({ message: "Sotuv allaqachon tasdiqlangan" });
-    }
-
-    // Pul kiritilgan bo‘lsa, logga yozing
-    if (paymentAmount && paymentAmount > 0) {
-      sale.paymentLog.push({ paymentAmount });
-      sale.totalAmountPaid += paymentAmount;
-    }
-
-    if (sale.totalAmountPaid >= sale.totalAmountToPaid) {
-      sale.isDebt = false;
-    }
-
-    sale.status = "delivered";
-    await sale.save();
-
-    return res.status(200).json({
-      message: "Zakas tasdiqlandi va mahsulot yetkazib berildi",
-      record: sale,
-    });
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).json({ message: "Serverda xatolik" });
-  }
-};
-
-
-exports.approveSale = async (req, res) => {
-  try {
-    const { saleId } = req.params;
-
-    const sale = await Sale.findById(saleId)
-      .populate("clientId", "fullname phone")
-      .populate("distributorId", "fullname phone")
-      .populate("products.productId")
-      .populate({
-        path: "products.productId",
-        populate: {
-          path: "productTypeId",
-          select: "name packageType pieceQuantityPerBox",
-        },
-      });
-
-    if (!sale) {
-      return res.status(404).json({ message: "Sotuv topilmadi" });
-    }
-
-    if (sale.status !== "pending") {
-      return res
-        .status(400)
-        .json({ message: "Bu sotuv allaqachon tasdiqlangan yoki yetkazilgan" });
-    }
-
-    sale.status = "approved";
-    await sale.save();
-
-    return res.status(200).json({ message: "Sotuv tasdiqlandi", record: sale });
-  } catch (err) {
-    console.log(err.message);
-    return res.status(500).json({ message: "Serverda xatolik" });
-  }
-};
+}
