@@ -122,32 +122,49 @@ exports.deliverSale = async (req, res) => {
     const { saleId } = req.params;
     const { paymentAmount } = req.body;
 
-    const sale = await Sale.findById(saleId);
+    const sale = await Sale.findById(saleId)
+      .populate({
+        path: "products.productId",
+        populate: {
+          path: "productTypeId",
+          select: "name packageType pieceQuantityPerBox",
+        },
+      })
+      .populate("clientId distributorId");
+
     if (!sale) {
       return res.status(404).json({ message: "Sotuv topilmadi" });
     }
 
-    if (sale.status !== "approved") {
-      return res.status(400).json({ message: "Sotuv hali tasdiqlanmagan" });
+    // ❌ Avvalgi tekshiruvni olib tashlang: if (sale.status !== 'inprogress')
+    // ✅ Quyidagicha yangilab tasdiqlang:
+    if (sale.status === "delivered") {
+      return res.status(400).json({ message: "Sotuv allaqachon tasdiqlangan" });
     }
 
-    sale.paymentLog.push({ paymentAmount });
-    sale.totalAmountPaid += paymentAmount;
-    sale.status = "delivered";
+    // Pul kiritilgan bo‘lsa, logga yozing
+    if (paymentAmount && paymentAmount > 0) {
+      sale.paymentLog.push({ paymentAmount });
+      sale.totalAmountPaid += paymentAmount;
+    }
 
     if (sale.totalAmountPaid >= sale.totalAmountToPaid) {
       sale.isDebt = false;
     }
 
+    sale.status = "delivered";
     await sale.save();
-    return res
-      .status(200)
-      .json({ message: "Mahsulot muvaffaqiyatli yetkazib berildi" });
+
+    return res.status(200).json({
+      message: "Zakas tasdiqlandi va mahsulot yetkazib berildi",
+      record: sale,
+    });
   } catch (err) {
     console.log(err.message);
     return res.status(500).json({ message: "Serverda xatolik" });
   }
 };
+
 
 exports.approveSale = async (req, res) => {
   try {
