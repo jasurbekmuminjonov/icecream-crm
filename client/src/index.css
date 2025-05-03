@@ -17,3 +17,13 @@ body {
   width: 100%;
   margin: 0 auto;
 }
+
+
+.ant-card-body{
+  width: 100% !important;
+  padding: 20px !important;
+}
+
+/* .ant-btn{
+  width: 38px !important;
+} */
