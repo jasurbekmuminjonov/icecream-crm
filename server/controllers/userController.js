@@ -60,3 +60,35 @@ exports.getUsers = async (req, res) => {
         return res.status(500).json({ message: "Serverda xatolik" });
     }
 }
+exports.updateUserLocation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lat, lng } = req.body;
+
+    if (!lat || !lng) {
+      return res
+        .status(400)
+        .json({ message: "Joylashuv ma'lumotlari yetarli emas" });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+    }
+
+    user.location = {
+      lat,
+      lng,
+      addedAt: new Date(),
+    };
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Joylashuv saqlandi", location: user.location });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(500).json({ message: "Serverda xatolik" });
+  }
+};
