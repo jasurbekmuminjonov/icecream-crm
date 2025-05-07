@@ -56,6 +56,27 @@ const Clients = () => {
     );
   };
 
+  const previewCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return message.error("Brauzeringiz joylashuvni qo‘llab-quvvatlamaydi");
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        window.open(
+          `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+          "_blank"
+        );
+      },
+      (error) => {
+        console.error(error);
+        message.error("Joylashuvni olishda xatolik");
+      }
+    );
+  };
+
   const columns = [
     { title: "To'liq ismi", dataIndex: "fullname" },
     { title: "Telefon raqami", dataIndex: "phone" },
@@ -106,6 +127,11 @@ const Clients = () => {
         }}
       >
         <Tabs.TabPane tab="Xaridorlar" key="1">
+          <div style={{ marginBottom: 10 }}>
+            <Button onClick={previewCurrentLocation} type="primary">
+              Mening hozirgi joylashuvimni ko‘rish
+            </Button>
+          </div>
           <Table
             style={{ overflowX: "auto" }}
             size="small"
@@ -115,6 +141,7 @@ const Clients = () => {
             rowKey="_id"
           />
         </Tabs.TabPane>
+
         <Tabs.TabPane tab="Xaridor qo'shish" key="2">
           <Form
             autoComplete="off"
