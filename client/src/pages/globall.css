@@ -1,0 +1,7 @@
+.distributors > .ant-btn{
+    width: 42px !important;
+    transform: translateX(-50%) !important;
+}
+
+.ant-col {
+}

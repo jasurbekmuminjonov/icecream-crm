@@ -24,8 +24,7 @@ function Layout() {
       <div className="layout_right">
         <Header />
         <main className="main-content">
-          {role === 'manager' ? (
-
+          {role === "manager" ? (
             <Routes>
               <Route path="/" element={<Products />} />
               <Route path="/distributors" element={<Distributors />} />
@@ -35,15 +34,19 @@ function Layout() {
               <Route path="/sale-history" element={<SaleHistory />} />
               <Route path="/debt" element={<Debtors />} />
             </Routes>
-          ) : role === 'distributor' ? (
+          ) : role === "distributor" ? (
             <Routes>
               <Route path="/" element={<DistributorRole />} />
+              <Route path="/order" element={<Sale />} />
+              <Route path="/clients" element={<Clients />} />
             </Routes>
-          ) : role === 'admin' ? (
+          ) : role === "admin" ? (
             <Routes>
               <Route path="/" element={<AdminRole />} />
             </Routes>
-          ) : <p>Rol xato</p>}
+          ) : (
+            <p>Rol xato</p>
+          )}
         </main>
       </div>
     </div>
