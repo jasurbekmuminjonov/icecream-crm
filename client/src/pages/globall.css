@@ -5,3 +5,16 @@
 
 .ant-col {
 }
+
+.sales-scroll{
+    overflow: auto !important;
+}
+
+.distributor-role{
+    padding: 5px !important;
+}
+
+
+.sale-card{
+    border: 1px solid rgb(42, 4, 234) !important;
+}

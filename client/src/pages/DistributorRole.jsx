@@ -15,6 +15,8 @@ import {
   Modal,
   Input,
   Table,
+  List,
+  Typography,
 } from "antd";
 import {
   FaBoxes,
@@ -26,19 +28,23 @@ import {
   FaBalanceScale,
 } from "react-icons/fa";
 import { MdOutlineReport } from "react-icons/md";
-import "./globall.css"
+import "./globall.css";
+
+const { Text } = Typography;
 
 const DistributorRole = () => {
   const { data: sales = [], isLoading, refetch } = useGetSalesQuery();
   const [form] = Form.useForm();
   const [deliverSale] = useDeliverSaleMutation();
-  const [actionType, setActionType] = useState("");
   const [paymentSale] = usePaymentSaleMutation();
+
+  const [actionType, setActionType] = useState("");
+  const [paymentModal, setPaymentModal] = useState(false);
   const [productsModal, setProductsModal] = useState(false);
   const [modalProducts, setModalProducts] = useState([]);
-  const [paymentModal, setPaymentModal] = useState(false);
-  const userId = localStorage.getItem("userId");
   const [selectedItem, setSelectedItem] = useState("");
+
+  const userId = localStorage.getItem("userId");
   const userSales = sales.filter((sale) => sale.distributorId._id === userId);
 
   const statusTypes = {
@@ -49,6 +55,11 @@ const DistributorRole = () => {
   const actionTypes = {
     payment: "To'lov qilish",
     deliver: "Yetkazishni belgilash",
+  };
+
+  const packageTypes = {
+    piece: "Dona",
+    box: "Quti",
   };
 
   async function handlePayment(values) {
@@ -77,50 +88,15 @@ const DistributorRole = () => {
     }
   }
 
-  const packageTypes = {
-    piece: "Dona",
-    box: "Quti",
-  };
+  const renderModalProducts = () => {
+    const isMobile = window.innerWidth <= 768;
 
-  return (
-    <div className="distributor-role">
-      <Modal
-        open={paymentModal}
-        onCancel={() => {
-          setPaymentModal(false);
-          form.resetFields();
-          setSelectedItem("");
-          setActionType("");
-        }}
-        title={actionTypes[actionType]}
-        footer={[]}
-      >
-        <Form form={form} onFinish={handlePayment} layout="vertical">
-          <Form.Item
-            name="paymentAmount"
-            label="To'lov miqdori"
-            rules={[{ required: true, message: "To'lov miqdorini kiriting" }]}
-          >
-            <Input type="number" placeholder="100000" />
-          </Form.Item>
-          <Button htmlType="submit" type="primary">
-            Saqlash
-          </Button>
-        </Form>
-      </Modal>
-
-      <Modal
-        open={productsModal}
-        onCancel={() => {
-          setProductsModal(false);
-          setModalProducts([]);
-        }}
-        title="Mahsulotlar"
-        footer={[]}
-      >
+    if (!isMobile) {
+      return (
         <Table
           style={{ overflowX: "auto" }}
           dataSource={modalProducts}
+          rowKey="_id"
           columns={[
             { title: "Tovar", dataIndex: "productName" },
             {
@@ -145,107 +121,173 @@ const DistributorRole = () => {
             },
           ]}
         />
+      );
+    }
+
+    return (
+      <List
+        dataSource={modalProducts}
+        renderItem={(item) => (
+          <Card size="small" style={{ marginBottom: 10 }}>
+            <Text strong>{item.productName}</Text>
+            <p>
+              Qadoq turi:{" "}
+              {packageTypes[item.productId.productTypeId.packageType]}
+            </p>
+            <p>Sotilgan miqdor: {item.quantity}</p>
+            <p>
+              Sotilgan quti soni:{" "}
+              {item.productId.productTypeId.packageType === "box"
+                ? item.quantity /
+                  item.productId.productTypeId.pieceQuantityPerBox
+                : "-"}
+            </p>
+            <p>Sotilgan narx: {item.sellingPrice}</p>
+            <p>
+              <strong>
+                Jami to'lov:{" "}
+                {(item.sellingPrice * item.quantity).toLocaleString()}
+              </strong>
+            </p>
+          </Card>
+        )}
+      />
+    );
+  };
+
+  return (
+    <div className="distributor-role">
+      <Modal
+        open={paymentModal}
+        onCancel={() => {
+          setPaymentModal(false);
+          form.resetFields();
+          setSelectedItem("");
+          setActionType("");
+        }}
+        title={actionTypes[actionType]}
+        footer={[]}
+      >
+        <Form form={form} onFinish={handlePayment} layout="vertical">
+          <Form.Item
+            name="paymentAmount"
+            label="To'lov miqdori"
+            rules={[{ required: true, message: "To'lov miqdorini kiriting" }]}
+          >
+            <Input type="number" placeholder="100000" />
+          </Form.Item>
+          <Button htmlType="submit" type="primary" block>
+            Saqlash
+          </Button>
+        </Form>
       </Modal>
 
-      <Space
-        style={{ width: "100%", padding: "5px 0", overflowY: "auto" }}
-        direction="vertical"
+      <Modal
+        open={productsModal}
+        onCancel={() => {
+          setProductsModal(false);
+          setModalProducts([]);
+        }}
+        title="Mahsulotlar"
+        footer={[]}
       >
-        {userSales.filter(
-          (sale) => !(sale.isDebt === false && sale.status === "delivered")
-        ).length < 1 ? (
-          <p>Sotuvlar bo'sh</p>
-        ) : (
-          userSales
-            .filter(
-              (sale) => !(sale.isDebt === false && sale.status === "delivered")
-            )
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map((sale) => (
-              <Card key={sale._id} id="sale-card">
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <p style={{ display: "flex", flexDirection: "column" }}>
-                      <FaUser /> Xaridor:{" "}
-                      <strong>{sale.clientId.fullname}</strong>
-                    </p>
-                  </Col>
-                  <Col span={12}>
-                    <p style={{ display: "flex", flexDirection: "column" }}>
-                      <FaPhone /> Telefon:{" "}
-                      <strong>{sale.clientId.phone}</strong>
-                    </p>
-                  </Col>
-                </Row>
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <p style={{ display: "flex", flexDirection: "column" }}>
-                      <FaMoneyBillAlt /> Umumiy to'lov:{" "}
-                      <strong>{sale.totalAmountToPaid.toLocaleString()}</strong>
-                    </p>
-                  </Col>
-                  <Col span={12}>
-                    <p style={{ display: "flex", flexDirection: "column" }}>
-                      <FaBalanceScale /> Qoldiq to'lov:{" "}
-                      <strong>
-                        {(
-                          sale.totalAmountToPaid - sale.totalAmountPaid
-                        ).toLocaleString()}
-                      </strong>
-                    </p>
-                  </Col>
-                </Row>
-                <Row gutter={24}>
-                  <Col span={12}>
-                    <p style={{ display: "flex", flexDirection: "column" }}>
-                      <MdOutlineReport /> Holat:{" "}
-                      <strong>{statusTypes[sale.status]}</strong>
-                    </p>
-                  </Col>
-                  <Col style={{ display: "flex", alignItems: "end" }} span={12}>
-                    <Space>
-                      <Button
-                        style={{ transform: "translateX(-50%)" }}
-                        onClick={() => {
-                          setSelectedItem(sale._id);
-                          setPaymentModal(true);
-                          setActionType("deliver");
-                        }}
-                        type="primary"
-                        disabled={sale.status === "delivered"}
-                      >
-                        <FaCheck />
-                      </Button>
+        {renderModalProducts()}
+      </Modal>
 
-                      <Button
-                        onClick={() => {
-                          setSelectedItem(sale._id);
-                          setPaymentModal(true);
-                          setActionType("payment");
-                        }}
-                        type="primary"
-                        disabled={sale.status === "inprogress"}
-                        style={{ transform: "translateX(-50%)" }}
-                      >
-                        <FaDollarSign />
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setProductsModal(true);
-                          setModalProducts(sale.products);
-                        }}
-                        type="primary"
-                        style={{ transform: "translateX(-50%)" }}
-                      >
-                        <FaBoxes />
-                      </Button>
-                    </Space>
-                  </Col>
-                </Row>
-              </Card>
-            ))
-        )}
-      </Space>
+      <div className="sales-scroll">
+        <Space direction="vertical" style={{ width: "100%" }}>
+          {userSales.filter(
+            (sale) => !(sale.isDebt === false && sale.status === "delivered")
+          ).length < 1 ? (
+            <p>Sotuvlar bo'sh</p>
+          ) : (
+            userSales
+              .filter(
+                (sale) =>
+                  !(sale.isDebt === false && sale.status === "delivered")
+              )
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((sale) => (
+                <Card className="sale-card" key={sale._id}>
+                  <Row gutter={[16, 8]}>
+                    <Col span={12}>
+                      <p>
+                        <FaUser /> <strong>{sale.clientId.fullname}</strong>
+                      </p>
+                    </Col>
+                    <Col span={12}>
+                      <p>
+                        <FaPhone /> <strong>{sale.clientId.phone}</strong>
+                      </p>
+                    </Col>
+                    <Col span={12}>
+                      <p>
+                        <FaMoneyBillAlt />{" "}
+                        <strong>
+                          {sale.totalAmountToPaid.toLocaleString()}
+                        </strong>
+                      </p>
+                    </Col>
+                    <Col span={12}>
+                      <p>
+                        <FaBalanceScale />{" "}
+                        <strong>
+                          {(
+                            sale.totalAmountToPaid - sale.totalAmountPaid
+                          ).toLocaleString()}
+                        </strong>
+                      </p>
+                    </Col>
+                    <Col span={12}>
+                      <p>
+                        <MdOutlineReport />{" "}
+                        <strong>{statusTypes[sale.status]}</strong>
+                      </p>
+                    </Col>
+                    <Col
+                      span={12}
+                      style={{ display: "flex", justifyContent: "end" }}
+                    >
+                      <Space>
+                        <Button
+                          onClick={() => {
+                            setSelectedItem(sale._id);
+                            setPaymentModal(true);
+                            setActionType("deliver");
+                          }}
+                          type="primary"
+                          disabled={sale.status === "delivered"}
+                        >
+                          <FaCheck />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSelectedItem(sale._id);
+                            setPaymentModal(true);
+                            setActionType("payment");
+                          }}
+                          type="primary"
+                          disabled={sale.status === "inprogress"}
+                        >
+                          <FaDollarSign />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setProductsModal(true);
+                            setModalProducts(sale.products);
+                          }}
+                          type="primary"
+                        >
+                          <FaBoxes />
+                        </Button>
+                      </Space>
+                    </Col>
+                  </Row>
+                </Card>
+              ))
+          )}
+        </Space>
+      </div>
     </div>
   );
 };
